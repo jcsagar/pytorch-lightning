@@ -38,11 +38,17 @@ RUN curl -o ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-${COND
 # add conda to path
 ENV PATH="/home/containeruser/miniconda/bin:$PATH"
 ENV LD_LIBRARY_PATH="/home/containeruser/miniconda/lib:$LD_LIBRARY_PATH"
+ENV CUDA_TOOLKIT_ROOT_DIR="/usr/local/cuda"
+
+COPY environment.yml environment.yml
 
 # conda init
 RUN conda create -y --name $CONDA_ENV python=$PYTHON_VERSION && \
     conda init bash && \
     conda install -y python=$PYTHON_VERSION && \
+    conda config --add channels pytorch && \
+    conda install torch=$PYTORCH_VERSION && \
+    conda env update --file environment.yml && \
 
 # Disable cache
     pip config set global.cache-dir false && \
@@ -53,10 +59,10 @@ ENV LD_LIBRARY_PATH="/home/containeruser/miniconda/envs/$CONDA_ENV/lib:$LD_LIBRA
 ENV CONDA_DEFAULT_ENV=${CONDA_ENV}
 
 # install dependencies
-RUN pip install torch==$PYTORCH_VERSION  -f https://download.pytorch.org/whl/torch_stable.html && \
-    git clone https://github.com/PyTorchLightning/pytorch-lightning.git --single-branch --branch $LIGHTNING_VERSION && \
-    pip install ./pytorch-lightning && \
-    pip install -r pytorch-lightning/requirements/extra.txt && \
+RUN git clone https://github.com/PyTorchLightning/pytorch-lightning.git --single-branch --branch $LIGHTNING_VERSION && \
+    cd ./pytorch-lightning && \
+    conda install ".[base, extra]" && \
+    cd .. && \
     rm -rf pytorch-lightning
 
 RUN python --version && \
